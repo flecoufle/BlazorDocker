@@ -1,0 +1,37 @@
+# Please refer https://aka.ms/HTTPSinContainer on how to setup an https developer certificate for your ASP .NET Core service.
+version: '3.4'
+
+services:
+  backend:
+    image: blazorclientserverserver
+    build:
+      context: .
+      dockerfile: Server/Dockerfile
+  frontend:
+    image: blazorclientserverclient
+    build:
+      context: .
+      dockerfile: Client/Dockerfile
+    volumes:
+      - ./wwwroot/appsettings.json:/var/www/web/appsettings.json
+    deploy:
+      mode: replicated
+      replicas: 2
+    depends_on:
+       - backend
+  proxy:
+    image: nginx:latest
+    container_name: proxy
+    ports:
+      - 8080:80
+    volumes:
+       - ./Proxy/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+       - frontend
+       - backend
+  cloudflare:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare
+    command: tunnel --url http://proxy:80
+    depends_on:
+       - proxy
